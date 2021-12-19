@@ -1,0 +1,8 @@
+cxx_library(
+    name = 'async',
+    visibility = [
+        'PUBLIC',
+    ],
+    exported_headers = glob(['*.h']),
+    srcs = glob(['*.cpp']),
+)

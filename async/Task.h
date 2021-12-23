@@ -69,6 +69,36 @@ private:
   std::optional<T> result;
   bool hadException = false;
 };
+
+template <> struct Promise<void> : PromiseBase {
+  friend struct Task<void>;
+
+  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+
+  Task<void> get_return_object();
+
+  void return_void() {
+    std::cout << "return_void" << std::endl;
+    hadResult = true;
+  }
+  void unhandled_exception() { hadException = true; }
+
+  void getResult() {
+    if (hadResult) {
+      return;
+    }
+
+    if (hadException) {
+      throw std::runtime_error("Task had exception.");
+    }
+
+    throw TaskUsageError{};
+  }
+
+private:
+  bool hadResult = false;
+  bool hadException = false;
+};
 } // namespace detail
 
 template <typename T> struct Task {
@@ -105,7 +135,7 @@ template <typename T> struct Task {
     return coro.done();
   }
 
-  T &getResult() {
+  decltype(auto) getResult() {
     check_coro();
     promise_type &promise = coro.promise();
     return promise.getResult();
@@ -120,7 +150,7 @@ template <typename T> struct Task {
     coro.promise().setContinuation(awaitingCoro);
   }
 
-  T &await_resume() { return getResult(); }
+  decltype(auto) await_resume() { return getResult(); }
 
 private:
   void check_coro() const {
@@ -129,3 +159,9 @@ private:
     }
   }
 };
+
+namespace detail {
+inline Task<void> Promise<void>::get_return_object() {
+  return {CoroutineHandle::from_promise(*this)};
+}
+} // namespace detail

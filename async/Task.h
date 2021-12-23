@@ -51,14 +51,14 @@ template <typename T> struct Promise : PromiseBase {
     std::cout << "return_value: " << _result << std::endl;
     result = _result;
   }
-  void unhandled_exception() { had_exception = true; }
+  void unhandled_exception() { hadException = true; }
 
   T &getResult() {
     if (result) {
       return *result;
     }
 
-    if (had_exception) {
+    if (hadException) {
       throw std::runtime_error("Task had exception.");
     }
 
@@ -67,7 +67,7 @@ template <typename T> struct Promise : PromiseBase {
 
 private:
   std::optional<T> result;
-  bool had_exception = false;
+  bool hadException = false;
 };
 } // namespace detail
 
@@ -100,12 +100,12 @@ template <typename T> struct Task {
     }
   }
 
-  bool is_ready() const {
+  bool isReady() const {
     check_coro();
     return coro.done();
   }
 
-  T &get_result() {
+  T &getResult() {
     check_coro();
     promise_type &promise = coro.promise();
     return promise.getResult();
@@ -113,14 +113,14 @@ template <typename T> struct Task {
 
   // Awaitable interface
 
-  bool await_ready() const { return is_ready(); }
+  bool await_ready() const { return isReady(); }
 
   void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
     // TODO check if a continuation already exists?
     coro.promise().setContinuation(awaitingCoro);
   }
 
-  T &await_resume() { return get_result(); }
+  T &await_resume() { return getResult(); }
 
 private:
   void check_coro() const {

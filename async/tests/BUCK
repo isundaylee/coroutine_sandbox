@@ -1,5 +1,5 @@
 cxx_test(
     name = 'task',
-    srcs = ['TaskTests.cpp'],
+    srcs = ['TaskTests.cc'],
     deps = ['//async:async'],
 )

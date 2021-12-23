@@ -15,6 +15,9 @@ Task<int> g() {
 
 Task<int> f() { co_return(co_await g()); }
 
+// Task<int> f() { co_return 42; }
+
+
 int main() try {
   Task<int> task_f = f();
 

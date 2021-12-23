@@ -2,14 +2,12 @@
 
 #include "gtest/gtest.h"
 
-#include <async/Task.h>
 #include <async/Scheduler.h>
+#include <async/Task.h>
 
 using namespace std::chrono_literals;
 
-Task<int> noop() {
-    co_return 42;
-    }
+Task<int> noop() { co_return 42; }
 
 Task<int> sleep_1ms() {
   co_await Scheduler::getInstance().sleep(1ms);
@@ -19,14 +17,14 @@ Task<int> sleep_1ms() {
 Task<int> calling_sleep_1ms() { co_return(co_await sleep_1ms()); }
 
 TEST(TaskTests, Basic) {
-    Task<int> task = noop();
-    ASSERT_EQ(task.get_result(), 42);
+  Task<int> task = noop();
+  ASSERT_EQ(task.get_result(), 42);
 }
 
 TEST(TaskTests, NestedWithSuspension) {
-    Task<int> task = calling_sleep_1ms();
-    EXPECT_THROW(task.get_result(), std::runtime_error);
+  Task<int> task = calling_sleep_1ms();
+  EXPECT_THROW(task.get_result(), TaskUsageError);
 
-    Scheduler::getInstance().run();
-    EXPECT_EQ(task.get_result(), 42);
+  Scheduler::getInstance().run();
+  EXPECT_EQ(task.get_result(), 42);
 }

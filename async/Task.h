@@ -4,51 +4,77 @@
 
 // TODO: add void support
 
-template <typename T> struct Task {
-  struct UsageError : std::exception {};
+template <typename T> struct Task;
 
-  struct Promise {
-    friend struct Task<T>;
+struct TaskUsageError : std::exception {};
 
-    using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+namespace detail {
+struct PromiseBase {
+  PromiseBase() {}
+  ~PromiseBase() { std::cout << "Promise destructed" << std::endl; }
 
-    Promise() {}
-    ~Promise() { std::cout << "Promise destructed" << std::endl; }
+  friend struct FinalAwaitable;
+  struct FinalAwaitable {
+    bool await_ready() const noexcept { return false; }
 
-    Task<T> get_return_object() {
-      return {CoroutineHandle::from_promise(*this)};
-    }
-    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
-    std::experimental::suspend_always final_suspend() noexcept { return {}; }
-    void return_value(int _result) {
-      std::cout << "return_value: " << _result << std::endl;
-      result = _result;
-      run_continuation();
-    }
-    void unhandled_exception() {
-      had_exception = true;
-      run_continuation();
+    template <typename PromiseType>
+    std::experimental::coroutine_handle<>
+    await_suspend(std::experimental::coroutine_handle<PromiseType> awaitingCoro)
+        const noexcept {
+      PromiseBase &promise = awaitingCoro.promise();
+      return promise.continuation ? promise.continuation
+                                  : std::experimental::noop_coroutine();
     }
 
-    bool is_ready() const { return !!result || had_exception; }
-
-  private:
-    std::optional<T> result;
-    bool had_exception = false;
-
-    std::optional<std::experimental::coroutine_handle<>> continuation;
-
-    void run_continuation() {
-      if (continuation) {
-        std::cout << "Running continuation" << std::endl;
-        continuation->resume();
-      }
-    }
+    void await_resume() const noexcept {}
   };
 
-  using promise_type = Promise;
+  std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+  FinalAwaitable final_suspend() noexcept { return {}; }
 
-  typename Promise::CoroutineHandle coro;
+  void setContinuation(std::experimental::coroutine_handle<> _continuation) {
+    continuation = _continuation;
+  }
+
+private:
+  std::experimental::coroutine_handle<> continuation = nullptr;
+};
+
+template <typename T> struct Promise : PromiseBase {
+  friend struct Task<T>;
+
+  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+
+  Task<T> get_return_object() { return {CoroutineHandle::from_promise(*this)}; }
+
+  void return_value(int _result) {
+    std::cout << "return_value: " << _result << std::endl;
+    result = _result;
+  }
+  void unhandled_exception() { had_exception = true; }
+
+  T &getResult() {
+    if (result) {
+      return *result;
+    }
+
+    if (had_exception) {
+      throw std::runtime_error("Task had exception.");
+    }
+
+    throw TaskUsageError{};
+  }
+
+private:
+  std::optional<T> result;
+  bool had_exception = false;
+};
+} // namespace detail
+
+template <typename T> struct Task {
+  using promise_type = detail::Promise<T>;
+
+  typename promise_type::CoroutineHandle coro;
 
   Task(const Task &) = delete;
   Task(Task &&rhs) : coro{rhs.coro} { rhs.coro = nullptr; }
@@ -66,7 +92,7 @@ template <typename T> struct Task {
     return *this;
   }
 
-  Task(typename Promise::CoroutineHandle _coro) : coro{_coro} {}
+  Task(typename promise_type::CoroutineHandle _coro) : coro{_coro} {}
 
   ~Task() {
     if (coro) {
@@ -76,24 +102,13 @@ template <typename T> struct Task {
 
   bool is_ready() const {
     check_coro();
-    Promise &promise = coro.promise();
-    return !!promise.result || promise.had_exception;
+    return coro.done();
   }
 
   T &get_result() {
     check_coro();
-
-    Promise &promise = coro.promise();
-
-    if (promise.result) {
-      return *promise.result;
-    }
-
-    if (promise.had_exception) {
-      throw std::runtime_error("Task had exception.");
-    }
-
-    throw std::runtime_error("Task result not ready yet.");
+    promise_type &promise = coro.promise();
+    return promise.getResult();
   }
 
   // Awaitable interface
@@ -102,7 +117,7 @@ template <typename T> struct Task {
 
   void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
     // TODO check if a continuation already exists?
-    coro.promise().continuation = awaitingCoro;
+    coro.promise().setContinuation(awaitingCoro);
   }
 
   T &await_resume() { return get_result(); }
@@ -110,7 +125,7 @@ template <typename T> struct Task {
 private:
   void check_coro() const {
     if (!coro) {
-      throw UsageError{};
+      throw TaskUsageError{};
     }
   }
 };

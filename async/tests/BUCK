@@ -1,0 +1,5 @@
+cxx_test(
+    name = 'task',
+    srcs = ['TaskTests.cpp'],
+    deps = ['//async:async'],
+)

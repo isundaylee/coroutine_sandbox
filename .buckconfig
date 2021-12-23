@@ -5,3 +5,4 @@
   cxxpp = /usr/local/bin/c++-11
   ld = /usr/local/bin/c++-11
   cxxflags = -std=c++20 -fcoroutines -O0 -g
+  gtest_dep = //third-party:googletest

@@ -1,4 +1,5 @@
-#include <coroutine>
+#include <experimental/coroutine>
+#include <iostream>
 #include <optional>
 
 // TODO: add void support
@@ -7,7 +8,7 @@ template <typename T> struct Task {
   struct Promise {
     friend struct Task<T>;
 
-    using CoroutineHandle = std::coroutine_handle<Promise>;
+    using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
 
     Promise() {}
     ~Promise() { std::cout << "Promise destructed" << std::endl; }
@@ -15,8 +16,8 @@ template <typename T> struct Task {
     Task<T> get_return_object() {
       return {CoroutineHandle::from_promise(*this)};
     }
-    std::suspend_never initial_suspend() noexcept { return {}; }
-    std::suspend_always final_suspend() noexcept { return {}; }
+    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+    std::experimental::suspend_always final_suspend() noexcept { return {}; }
     void return_value(int _result) {
       std::cout << "return_value: " << _result << std::endl;
       result = _result;
@@ -34,7 +35,7 @@ template <typename T> struct Task {
     std::optional<T> result;
     bool had_exception = false;
 
-    std::optional<std::coroutine_handle<>> continuation;
+    std::optional<std::experimental::coroutine_handle<>> continuation;
 
     void run_continuation() {
       if (continuation) {
@@ -46,14 +47,14 @@ template <typename T> struct Task {
 
   using promise_type = Promise;
 
-  Promise::CoroutineHandle coro;
+  typename Promise::CoroutineHandle coro;
 
   Task(const Task &) = delete;
   Task(Task &&) = delete;
   Task &operator=(const Task &) = delete;
   Task &operator=(Task &&) = delete;
 
-  Task(Promise::CoroutineHandle _coro) : coro{_coro} {}
+  Task(typename Promise::CoroutineHandle _coro) : coro{_coro} {}
 
   ~Task() { coro.destroy(); }
 
@@ -80,7 +81,7 @@ template <typename T> struct Task {
 
   bool await_ready() const { return is_ready(); }
 
-  void await_suspend(std::coroutine_handle<> awaitingCoro) {
+  void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
     // TODO check if a continuation already exists?
     coro.promise().continuation = awaitingCoro;
   }

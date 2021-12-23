@@ -1,7 +1,8 @@
 #include <chrono>
-#include <coroutine>
 #include <deque>
+#include <experimental/coroutine>
 #include <vector>
+#include <iostream>
 
 struct Scheduler {
   static Scheduler &getInstance() {
@@ -9,9 +10,11 @@ struct Scheduler {
     return instance;
   }
 
-  void enqueue(std::coroutine_handle<> coro) { queue.push_back(coro); }
+  void enqueue(std::experimental::coroutine_handle<> coro) {
+    queue.push_back(coro);
+  }
 
-  std::coroutine_handle<> pop_front() {
+  std::experimental::coroutine_handle<> pop_front() {
     auto front = queue.front();
     queue.pop_front();
     return front;
@@ -24,8 +27,8 @@ struct Scheduler {
 
       bool await_ready() { return false; }
 
-      std::coroutine_handle<>
-      await_suspend(std::coroutine_handle<> awaitingCoro) {
+      std::experimental::coroutine_handle<>
+      await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
         scheduler.enqueue(awaitingCoro);
         return scheduler.pop_front();
       }
@@ -47,7 +50,7 @@ struct Scheduler {
 
       bool await_ready() { return false; }
 
-      void await_suspend(std::coroutine_handle<> awaitingCoro) {
+      void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
         scheduler.sleepingCoros.emplace_back(
             std::chrono::steady_clock::now() + duration, awaitingCoro);
       }
@@ -99,8 +102,8 @@ struct Scheduler {
   }
 
 private:
-  std::deque<std::coroutine_handle<>> queue;
-  std::vector<
-      std::pair<std::chrono::steady_clock::time_point, std::coroutine_handle<>>>
+  std::deque<std::experimental::coroutine_handle<>> queue;
+  std::vector<std::pair<std::chrono::steady_clock::time_point,
+                        std::experimental::coroutine_handle<>>>
       sleepingCoros;
 };

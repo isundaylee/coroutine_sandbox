@@ -31,7 +31,6 @@ template <typename T> struct Task {
     bool is_ready() const { return !!result || had_exception; }
 
   private:
-    // FIXME: this does not work, gets destroyed too early
     std::optional<T> result;
     bool had_exception = false;
 

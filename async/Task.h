@@ -5,6 +5,8 @@
 // TODO: add void support
 
 template <typename T> struct Task {
+  struct UsageError : std::exception {};
+
   struct Promise {
     friend struct Task<T>;
 
@@ -49,20 +51,38 @@ template <typename T> struct Task {
   typename Promise::CoroutineHandle coro;
 
   Task(const Task &) = delete;
-  Task(Task &&) = delete;
+  Task(Task &&rhs) : coro{rhs.coro} { rhs.coro = nullptr; }
   Task &operator=(const Task &) = delete;
-  Task &operator=(Task &&) = delete;
+  Task &operator=(Task &&rhs) {
+    if (std::addressof(rhs) != this) {
+      if (coro) {
+        coro.destroy();
+      }
+
+      coro = rhs.coro;
+      rhs.coro = nullptr;
+    }
+
+    return *this;
+  }
 
   Task(typename Promise::CoroutineHandle _coro) : coro{_coro} {}
 
-  ~Task() { coro.destroy(); }
+  ~Task() {
+    if (coro) {
+      coro.destroy();
+    }
+  }
 
   bool is_ready() const {
+    check_coro();
     Promise &promise = coro.promise();
     return !!promise.result || promise.had_exception;
   }
 
   T &get_result() {
+    check_coro();
+
     Promise &promise = coro.promise();
 
     if (promise.result) {
@@ -86,4 +106,11 @@ template <typename T> struct Task {
   }
 
   T &await_resume() { return get_result(); }
+
+private:
+  void check_coro() const {
+    if (!coro) {
+      throw UsageError{};
+    }
+  }
 };

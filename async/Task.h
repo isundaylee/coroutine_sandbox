@@ -16,7 +16,7 @@ template <typename T> struct Task {
       return {CoroutineHandle::from_promise(*this)};
     }
     std::suspend_never initial_suspend() noexcept { return {}; }
-    std::suspend_never final_suspend() noexcept { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
     void return_value(int _result) {
       std::cout << "return_value: " << _result << std::endl;
       result = _result;
@@ -48,12 +48,14 @@ template <typename T> struct Task {
 
   Promise::CoroutineHandle coro;
 
-  Task(Promise::CoroutineHandle _coro) : coro{_coro} {}
-
   Task(const Task &) = delete;
-  Task(Task &&) = default;
+  Task(Task &&) = delete;
   Task &operator=(const Task &) = delete;
   Task &operator=(Task &&) = delete;
+
+  Task(Promise::CoroutineHandle _coro) : coro{_coro} {}
+
+  ~Task() { coro.destroy(); }
 
   bool is_ready() const {
     Promise &promise = coro.promise();

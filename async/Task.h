@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include <experimental/coroutine>
 #include <iostream>
 #include <optional>
@@ -161,12 +163,12 @@ template <typename T> struct Task {
   }
 
   bool isReady() const {
-    check_coro();
+    assert(coro);
     return coro.done();
   }
 
   decltype(auto) getResult() {
-    check_coro();
+    assert(coro);
     promise_type &promise = coro.promise();
     return promise.getResult();
   }
@@ -181,13 +183,6 @@ template <typename T> struct Task {
   }
 
   decltype(auto) await_resume() { return getResult(); }
-
-private:
-  void check_coro() const {
-    if (!coro) {
-      throw TaskUsageError{};
-    }
-  }
 };
 
 namespace detail {

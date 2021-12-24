@@ -41,8 +41,13 @@ TEST(TaskTests, Void) {
 
 TEST(TaskTests, NestedWithSuspension) {
   Task<int> task = calling_sleep_1ms();
-  EXPECT_THROW(task.getResult(), TaskUsageError);
-
   Scheduler::getInstance().run();
-  EXPECT_EQ(task.getResult(), 42);
+  ASSERT_EQ(task.getResult(), 42);
+}
+
+TEST(TaskExitTests, GetResultWhenNotReady) {
+  Task<int> task = calling_sleep_1ms();
+  ASSERT_EXIT(task.getResult(), testing::KilledBySignal(SIGABRT),
+              "Assertion failed: \\(false && \"getResult\\(\\) called on a "
+              "TaskPromise that's not ready\\.\"\\), function getResult.+");
 }

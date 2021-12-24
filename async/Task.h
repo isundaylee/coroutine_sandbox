@@ -4,11 +4,7 @@
 #include <iostream>
 #include <optional>
 
-// TODO: add void support
-
 template <typename T> struct Task;
-
-struct TaskUsageError : std::exception {};
 
 namespace detail {
 struct TaskPromiseBase {
@@ -64,7 +60,7 @@ template <typename T> struct TaskPromise : TaskPromiseBase {
       throw std::runtime_error("Task had exception.");
     }
 
-    throw TaskUsageError{};
+    assert(false && "getResult() called on a TaskPromise that's not ready.");
   }
 
 private:
@@ -94,7 +90,7 @@ template <> struct TaskPromise<void> : TaskPromiseBase {
       throw std::runtime_error("Task had exception.");
     }
 
-    throw TaskUsageError{};
+    assert(false && "getResult() called on a TaskPromise that's not ready.");
   }
 
 private:
@@ -124,7 +120,7 @@ template <typename T> struct TaskPromise<T &> : TaskPromiseBase {
       throw std::runtime_error("Task had exception.");
     }
 
-    throw TaskUsageError{};
+    assert(false && "getResult() called on a TaskPromise that's not ready.");
   }
 
 private:

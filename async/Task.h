@@ -99,6 +99,36 @@ private:
   bool hadResult = false;
   bool hadException = false;
 };
+
+template <typename T> struct Promise<T &> : PromiseBase {
+  friend struct Task<T &>;
+
+  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+
+  Task<T &> get_return_object();
+
+  void return_value(T& value) {
+    std::cout << "return_value" << std::endl;
+    result = &value;
+  }
+  void unhandled_exception() { hadException = true; }
+
+  T& getResult() {
+    if (result) {
+      return **result;
+    }
+
+    if (hadException) {
+      throw std::runtime_error("Task had exception.");
+    }
+
+    throw TaskUsageError{};
+  }
+
+private:
+  std::optional<T*> result;
+  bool hadException = false;
+};
 } // namespace detail
 
 template <typename T> struct Task {
@@ -162,6 +192,10 @@ private:
 
 namespace detail {
 inline Task<void> Promise<void>::get_return_object() {
+  return {CoroutineHandle::from_promise(*this)};
+}
+
+template <typename T> Task<T &> Promise<T &>::get_return_object() {
   return {CoroutineHandle::from_promise(*this)};
 }
 } // namespace detail

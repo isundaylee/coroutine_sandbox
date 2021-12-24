@@ -9,9 +9,9 @@ template <typename T> struct Task;
 struct TaskUsageError : std::exception {};
 
 namespace detail {
-struct PromiseBase {
-  PromiseBase() {}
-  ~PromiseBase() { std::cout << "Promise destructed" << std::endl; }
+struct TaskPromiseBase {
+  TaskPromiseBase() {}
+  ~TaskPromiseBase() { std::cout << "TaskPromise destructed" << std::endl; }
 
   friend struct FinalAwaitable;
   struct FinalAwaitable {
@@ -21,7 +21,7 @@ struct PromiseBase {
     std::experimental::coroutine_handle<>
     await_suspend(std::experimental::coroutine_handle<PromiseType> awaitingCoro)
         const noexcept {
-      PromiseBase &promise = awaitingCoro.promise();
+      TaskPromiseBase &promise = awaitingCoro.promise();
       return promise.continuation ? promise.continuation
                                   : std::experimental::noop_coroutine();
     }
@@ -40,10 +40,10 @@ private:
   std::experimental::coroutine_handle<> continuation = nullptr;
 };
 
-template <typename T> struct Promise : PromiseBase {
+template <typename T> struct TaskPromise : TaskPromiseBase {
   friend struct Task<T>;
 
-  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+  using CoroutineHandle = std::experimental::coroutine_handle<TaskPromise>;
 
   Task<T> get_return_object() { return {CoroutineHandle::from_promise(*this)}; }
 
@@ -70,10 +70,10 @@ private:
   bool hadException = false;
 };
 
-template <> struct Promise<void> : PromiseBase {
+template <> struct TaskPromise<void> : TaskPromiseBase {
   friend struct Task<void>;
 
-  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+  using CoroutineHandle = std::experimental::coroutine_handle<TaskPromise>;
 
   Task<void> get_return_object();
 
@@ -100,20 +100,20 @@ private:
   bool hadException = false;
 };
 
-template <typename T> struct Promise<T &> : PromiseBase {
+template <typename T> struct TaskPromise<T &> : TaskPromiseBase {
   friend struct Task<T &>;
 
-  using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
+  using CoroutineHandle = std::experimental::coroutine_handle<TaskPromise>;
 
   Task<T &> get_return_object();
 
-  void return_value(T& value) {
+  void return_value(T &value) {
     std::cout << "return_value" << std::endl;
     result = &value;
   }
   void unhandled_exception() { hadException = true; }
 
-  T& getResult() {
+  T &getResult() {
     if (result) {
       return **result;
     }
@@ -126,13 +126,13 @@ template <typename T> struct Promise<T &> : PromiseBase {
   }
 
 private:
-  std::optional<T*> result;
+  std::optional<T *> result;
   bool hadException = false;
 };
 } // namespace detail
 
 template <typename T> struct Task {
-  using promise_type = detail::Promise<T>;
+  using promise_type = detail::TaskPromise<T>;
 
   typename promise_type::CoroutineHandle coro;
 
@@ -191,11 +191,11 @@ private:
 };
 
 namespace detail {
-inline Task<void> Promise<void>::get_return_object() {
+inline Task<void> TaskPromise<void>::get_return_object() {
   return {CoroutineHandle::from_promise(*this)};
 }
 
-template <typename T> Task<T &> Promise<T &>::get_return_object() {
+template <typename T> Task<T &> TaskPromise<T &>::get_return_object() {
   return {CoroutineHandle::from_promise(*this)};
 }
 } // namespace detail

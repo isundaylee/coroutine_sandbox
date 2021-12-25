@@ -6,6 +6,8 @@
 
 template <typename T> struct Task;
 
+// TODO: Limit co_await to rvalue Tasks
+
 namespace detail {
 struct TaskPromiseBase {
   TaskPromiseBase() {}

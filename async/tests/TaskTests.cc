@@ -56,6 +56,24 @@ TEST(TaskTests, NestedWithSuspension) {
   ASSERT_EQ(runSingleTask(task), 42);
 }
 
+struct NonDefaultConstructible {
+  int value;
+  NonDefaultConstructible(int value_) : value{value_} {}
+
+  bool operator==(const NonDefaultConstructible &rhs) const noexcept {
+    return value == rhs.value;
+  }
+};
+
+Task<NonDefaultConstructible> noop_non_default_constructible_result() {
+  co_return NonDefaultConstructible{42};
+}
+
+TEST(TaskTests, NonDefaultConstructible) {
+  Task<NonDefaultConstructible> task = noop_non_default_constructible_result();
+  ASSERT_EQ(runSingleTask(task), NonDefaultConstructible{42});
+}
+
 TEST(TaskExitTests, GetResultWhenNotReady) {
   Task<int> task = calling_sleep_1ms();
   ASSERT_EXIT(task.getResult(), testing::KilledBySignal(SIGABRT),

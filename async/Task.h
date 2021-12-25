@@ -50,24 +50,27 @@ template <typename T> struct TaskPromise : TaskPromiseBase {
     ready = true;
   }
   void unhandled_exception() {
-    exception = std::current_exception();
+    result = std::current_exception();
     ready = true;
   }
 
   T &getResult() {
     assert(ready && "getResult() called on a TaskPromise that's not ready.");
 
-    if (exception) {
-      std::rethrow_exception(exception);
+    if (std::holds_alternative<std::exception_ptr>(result)) {
+      std::rethrow_exception(std::get<std::exception_ptr>(result));
     }
 
-    return result;
+    assert(std::holds_alternative<T>(result));
+    return std::get<T>(result);
   }
 
 private:
+  struct NoResultTag {};
+
+  // TODO: No need for ready now
   bool ready = false;
-  T result;
-  std::exception_ptr exception;
+  std::variant<NoResultTag, T, std::exception_ptr> result;
 };
 
 template <> struct TaskPromise<void> : TaskPromiseBase {
@@ -77,9 +80,7 @@ template <> struct TaskPromise<void> : TaskPromiseBase {
 
   Task<void> get_return_object();
 
-  void return_void() {
-    ready = true;
-  }
+  void return_void() { ready = true; }
   void unhandled_exception() {
     exception = std::current_exception();
     ready = true;

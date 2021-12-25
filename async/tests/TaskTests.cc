@@ -9,21 +9,21 @@ using namespace std::chrono_literals;
 
 struct TestException : std::exception {};
 
-Task<int> noop_int() { co_return 42; }
+Task<int> noopInt() { co_return 42; }
 
-Task<int &> noop_ref() {
+Task<int &> noopRef() {
   static int *a = new int{42};
   co_return *a;
 }
 
-Task<void> noop_void() { co_return; }
+Task<void> noopVoid() { co_return; }
 
-Task<int> sleep_1ms() {
+Task<int> sleep1ms() {
   co_await Scheduler::getInstance().sleep(1ms);
   co_return 42;
 }
 
-Task<int> calling_sleep_1ms() { co_return(co_await sleep_1ms()); }
+Task<int> callingSleep1ms() { co_return(co_await sleep1ms()); }
 
 template <typename T> T runSingleTask(Task<T> &task) {
   Scheduler::getInstance().enqueue(task.coro);
@@ -32,27 +32,27 @@ template <typename T> T runSingleTask(Task<T> &task) {
 }
 
 TEST(TaskTests, Basic) {
-  Task<int> task = noop_int();
+  Task<int> task = noopInt();
   ASSERT_EQ(runSingleTask(task), 42);
 }
 
 TEST(TaskTests, Ref) {
-  Task<int &> task_a = noop_ref();
-  Task<int &> task_b = noop_ref();
-  int &result_a = runSingleTask(task_a);
-  int &result_b = runSingleTask(task_b);
-  ASSERT_EQ(result_a, 42);
-  ASSERT_EQ(result_b, 42);
-  ASSERT_EQ(&result_a, &result_b);
+  Task<int &> taskA = noopRef();
+  Task<int &> taskB = noopRef();
+  int &resultA = runSingleTask(taskA);
+  int &resultB = runSingleTask(taskB);
+  ASSERT_EQ(resultA, 42);
+  ASSERT_EQ(resultB, 42);
+  ASSERT_EQ(&resultA, &resultB);
 }
 
 TEST(TaskTests, Void) {
-  Task<void> task = noop_void();
+  Task<void> task = noopVoid();
   runSingleTask(task);
 }
 
 TEST(TaskTests, NestedWithSuspension) {
-  Task<int> task = calling_sleep_1ms();
+  Task<int> task = callingSleep1ms();
   ASSERT_EQ(runSingleTask(task), 42);
 }
 
@@ -65,18 +65,18 @@ struct NonDefaultConstructible {
   }
 };
 
-Task<NonDefaultConstructible> noop_non_default_constructible_result() {
+Task<NonDefaultConstructible> noopNonDefaultConstructibleResult() {
   co_return NonDefaultConstructible{42};
 }
 
 TEST(TaskTests, NonDefaultConstructible) {
-  Task<NonDefaultConstructible> task = noop_non_default_constructible_result();
+  Task<NonDefaultConstructible> task = noopNonDefaultConstructibleResult();
   ASSERT_EQ(runSingleTask(task), NonDefaultConstructible{42});
 }
 
 Task<void> syncLoop() {
   for (size_t i = 0; i < 1000000; i++) {
-    co_await noop_void();
+    co_await noopVoid();
   }
 }
 
@@ -87,7 +87,7 @@ TEST(TaskTests, SyncLoop) {
 }
 
 TEST(TaskExitTests, GetResultWhenNotReady) {
-  Task<int> task = calling_sleep_1ms();
+  Task<int> task = callingSleep1ms();
   ASSERT_EXIT(task.getResult(), testing::KilledBySignal(SIGABRT),
               "Assertion failed: \\(ready && \"getResult\\(\\) called on a "
               "TaskPromise that's not ready\\.\"\\), function getResult.+");
@@ -96,33 +96,33 @@ TEST(TaskExitTests, GetResultWhenNotReady) {
 ////////////////////////////////////////////////////////////////////////////////
 // Exception handling tests
 
-Task<int> throwing_int() {
+Task<int> throwingInt() {
   throw TestException{};
   co_return 42;
 }
 
-Task<int &> throwing_ref() {
+Task<int &> throwingRef() {
   throw TestException{};
   int *a = new int{42};
   co_return *a;
 }
 
-Task<void> throwing_void() {
+Task<void> throwingVoid() {
   throw TestException{};
   co_return;
 }
 
 TEST(TaskExitTests, ExceptionBasic) {
-  Task<int> noop = throwing_int();
+  Task<int> noop = throwingInt();
   ASSERT_THROW(runSingleTask(noop), TestException);
 }
 
 TEST(TaskExitTests, ExceptionVoid) {
-  Task<void> noop = throwing_void();
+  Task<void> noop = throwingVoid();
   ASSERT_THROW(runSingleTask(noop), TestException);
 }
 
 TEST(TaskExitTests, ExceptionRef) {
-  Task<int &> noop = throwing_ref();
+  Task<int &> noop = throwingRef();
   ASSERT_THROW(runSingleTask(noop), TestException);
 }

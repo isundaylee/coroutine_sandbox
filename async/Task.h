@@ -27,10 +27,11 @@ struct TaskPromiseBase {
     void await_resume() const noexcept {}
   };
 
-  std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
   FinalAwaitable final_suspend() noexcept { return {}; }
 
   void setContinuation(std::experimental::coroutine_handle<> _continuation) {
+    assert(!continuation);
     continuation = _continuation;
   }
 
@@ -132,6 +133,7 @@ private:
 template <typename T> struct Task {
   using promise_type = detail::TaskPromise<T>;
 
+  // TODO: This should be private (currently public for use in tests)
   typename promise_type::CoroutineHandle coro;
 
   Task(const Task &) = delete;
@@ -158,11 +160,6 @@ template <typename T> struct Task {
     }
   }
 
-  bool isReady() const {
-    assert(coro);
-    return coro.done();
-  }
-
   decltype(auto) getResult() {
     assert(coro);
     promise_type &promise = coro.promise();
@@ -171,11 +168,14 @@ template <typename T> struct Task {
 
   // Awaitable interface
 
-  bool await_ready() const { return isReady(); }
+  bool await_ready() const {
+    assert(coro);
+    return coro.done();
+  }
 
   void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
-    // TODO check if a continuation already exists?
     coro.promise().setContinuation(awaitingCoro);
+    coro.resume();
   }
 
   decltype(auto) await_resume() { return getResult(); }

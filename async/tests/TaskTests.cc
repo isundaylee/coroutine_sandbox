@@ -7,11 +7,15 @@
 
 using namespace std::chrono_literals;
 
+struct TestException : std::exception {};
+
 Task<int> noop_int() { co_return 42; }
+
 Task<int &> noop_ref() {
   static int *a = new int{42};
   co_return *a;
 }
+
 Task<void> noop_void() { co_return; }
 
 Task<int> sleep_1ms() {
@@ -21,28 +25,35 @@ Task<int> sleep_1ms() {
 
 Task<int> calling_sleep_1ms() { co_return(co_await sleep_1ms()); }
 
+template <typename T> T runSingleTask(Task<T> &task) {
+  Scheduler::getInstance().enqueue(task.coro);
+  Scheduler::getInstance().run();
+  return task.getResult();
+}
+
 TEST(TaskTests, Basic) {
   Task<int> task = noop_int();
-  ASSERT_EQ(task.getResult(), 42);
+  ASSERT_EQ(runSingleTask(task), 42);
 }
 
 TEST(TaskTests, Ref) {
   Task<int &> task_a = noop_ref();
   Task<int &> task_b = noop_ref();
-  ASSERT_EQ(task_a.getResult(), 42);
-  ASSERT_EQ(task_b.getResult(), 42);
-  ASSERT_EQ(&task_a.getResult(), &task_b.getResult());
+  int &result_a = runSingleTask(task_a);
+  int &result_b = runSingleTask(task_b);
+  ASSERT_EQ(result_a, 42);
+  ASSERT_EQ(result_b, 42);
+  ASSERT_EQ(&result_a, &result_b);
 }
 
 TEST(TaskTests, Void) {
   Task<void> task = noop_void();
-  task.getResult();
+  runSingleTask(task);
 }
 
 TEST(TaskTests, NestedWithSuspension) {
   Task<int> task = calling_sleep_1ms();
-  Scheduler::getInstance().run();
-  ASSERT_EQ(task.getResult(), 42);
+  ASSERT_EQ(runSingleTask(task), 42);
 }
 
 TEST(TaskExitTests, GetResultWhenNotReady) {

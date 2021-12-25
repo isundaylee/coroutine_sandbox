@@ -8,24 +8,26 @@
 
 using namespace std::chrono_literals;
 
-Task<int> g() {
-  co_await Scheduler::getInstance().sleep(1s);
-  co_return 42;
+Task<void> u() { co_await Scheduler::getInstance().sleep(1s); }
+Task<void> g() { co_await u(); }
+Task<void> f() { co_await g(); }
+
+Task<void> noop() { co_return; }
+
+Task<void> syncLoop() {
+  for (size_t i = 0; i < 100; i++) {
+    co_await noop();
+  }
 }
 
-Task<int> f() { co_return(co_await g()); }
-
-// Task<int> f() { co_return 42; }
-
-
 int main() try {
-  Task<int> task_f = f();
+  syncLoop();
+  // Task<void> task_f = f();
 
-  Scheduler &scheduler = Scheduler::getInstance();
-  scheduler.run();
+  // Scheduler &scheduler = Scheduler::getInstance();
+  // scheduler.run();
 
-  std::cout << "Result: " << task_f.get_result() << std::endl;
-
+  // task_f.getResult();
   return 0;
 } catch (const std::exception &ex) {
   std::cout << "Got exception: " << ex.what() << std::endl;

@@ -175,9 +175,10 @@ template <typename T> struct Task {
     return coro.done();
   }
 
-  void await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
+  std::experimental::coroutine_handle<>
+  await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
     coro.promise().setContinuation(awaitingCoro);
-    coro.resume();
+    return coro;
   }
 
   decltype(auto) await_resume() { return getResult(); }

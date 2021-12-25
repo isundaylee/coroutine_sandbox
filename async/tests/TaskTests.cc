@@ -74,6 +74,18 @@ TEST(TaskTests, NonDefaultConstructible) {
   ASSERT_EQ(runSingleTask(task), NonDefaultConstructible{42});
 }
 
+Task<void> syncLoop() {
+  for (size_t i = 0; i < 1000000; i++) {
+    co_await noop_void();
+  }
+}
+
+TEST(TaskTests, SyncLoop) {
+  // Tests that we don't run out stack
+  Task<void> task = syncLoop();
+  runSingleTask(task);
+}
+
 TEST(TaskExitTests, GetResultWhenNotReady) {
   Task<int> task = calling_sleep_1ms();
   ASSERT_EXIT(task.getResult(), testing::KilledBySignal(SIGABRT),

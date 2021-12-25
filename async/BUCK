@@ -4,5 +4,5 @@ cxx_library(
         'PUBLIC',
     ],
     exported_headers = glob(['*.h']),
-    srcs = glob(['*.cpp']),
+    srcs = glob(['*.cc']),
 )

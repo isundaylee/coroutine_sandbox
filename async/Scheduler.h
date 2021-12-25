@@ -1,10 +1,14 @@
 #include <chrono>
 #include <deque>
 #include <experimental/coroutine>
-#include <vector>
 #include <iostream>
+#include <vector>
+
+#include "async/FDService.h"
 
 struct Scheduler {
+  Scheduler() : fdService{*this} {}
+
   static Scheduler &getInstance() {
     static Scheduler instance;
     return instance;
@@ -27,6 +31,7 @@ struct Scheduler {
 
       bool await_ready() { return false; }
 
+      // TODO: maybe return void here instead?
       std::experimental::coroutine_handle<>
       await_suspend(std::experimental::coroutine_handle<> awaitingCoro) {
         scheduler.enqueue(awaitingCoro);
@@ -65,6 +70,7 @@ struct Scheduler {
     return Awaitable{*this, duration};
   }
 
+  // TODO: reentrance check
   void run() {
     while (true) {
       bool done = true;
@@ -95,15 +101,23 @@ struct Scheduler {
         done = false;
       }
 
+      if (fdService.poll()) {
+        done = false;
+      }
+
       if (done) {
         break;
       }
     }
   }
 
+  FDService &fd() { return fdService; }
+
 private:
   std::deque<std::experimental::coroutine_handle<>> queue;
   std::vector<std::pair<std::chrono::steady_clock::time_point,
                         std::experimental::coroutine_handle<>>>
       sleepingCoros;
+
+  FDService fdService;
 };

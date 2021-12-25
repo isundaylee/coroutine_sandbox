@@ -1,0 +1,8 @@
+cxx_binary(
+    name = 'EchoServer',
+    srcs = ['EchoServer.cc'],
+    visibility = ['PUBLIC'],
+    deps = [
+        "//async:async",
+    ]
+)

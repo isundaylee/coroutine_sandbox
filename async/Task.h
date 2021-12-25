@@ -9,7 +9,6 @@ template <typename T> struct Task;
 namespace detail {
 struct TaskPromiseBase {
   TaskPromiseBase() {}
-  ~TaskPromiseBase() { std::cout << "TaskPromise destructed" << std::endl; }
 
   friend struct FinalAwaitable;
   struct FinalAwaitable {
@@ -47,7 +46,6 @@ template <typename T> struct TaskPromise : TaskPromiseBase {
   Task<T> get_return_object() { return {CoroutineHandle::from_promise(*this)}; }
 
   void return_value(int _result) {
-    std::cout << "return_value: " << _result << std::endl;
     result = _result;
     ready = true;
   }
@@ -80,7 +78,6 @@ template <> struct TaskPromise<void> : TaskPromiseBase {
   Task<void> get_return_object();
 
   void return_void() {
-    std::cout << "return_void" << std::endl;
     ready = true;
   }
   void unhandled_exception() {
@@ -109,7 +106,6 @@ template <typename T> struct TaskPromise<T &> : TaskPromiseBase {
   Task<T &> get_return_object();
 
   void return_value(T &value) {
-    std::cout << "return_value" << std::endl;
     result = &value;
     ready = true;
   }

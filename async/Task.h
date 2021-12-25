@@ -49,24 +49,27 @@ template <typename T> struct TaskPromise : TaskPromiseBase {
   void return_value(int _result) {
     std::cout << "return_value: " << _result << std::endl;
     result = _result;
+    ready = true;
   }
-  void unhandled_exception() { hadException = true; }
+  void unhandled_exception() {
+    exception = std::current_exception();
+    ready = true;
+  }
 
   T &getResult() {
-    if (result) {
-      return *result;
+    assert(ready && "getResult() called on a TaskPromise that's not ready.");
+
+    if (exception) {
+      std::rethrow_exception(exception);
     }
 
-    if (hadException) {
-      throw std::runtime_error("Task had exception.");
-    }
-
-    assert(false && "getResult() called on a TaskPromise that's not ready.");
+    return result;
   }
 
 private:
-  std::optional<T> result;
-  bool hadException = false;
+  bool ready = false;
+  T result;
+  std::exception_ptr exception;
 };
 
 template <> struct TaskPromise<void> : TaskPromiseBase {
@@ -78,25 +81,24 @@ template <> struct TaskPromise<void> : TaskPromiseBase {
 
   void return_void() {
     std::cout << "return_void" << std::endl;
-    hadResult = true;
+    ready = true;
   }
-  void unhandled_exception() { hadException = true; }
+  void unhandled_exception() {
+    exception = std::current_exception();
+    ready = true;
+  }
 
   void getResult() {
-    if (hadResult) {
-      return;
-    }
+    assert(ready && "getResult() called on a TaskPromise that's not ready.");
 
-    if (hadException) {
-      throw std::runtime_error("Task had exception.");
+    if (exception) {
+      std::rethrow_exception(exception);
     }
-
-    assert(false && "getResult() called on a TaskPromise that's not ready.");
   }
 
 private:
-  bool hadResult = false;
-  bool hadException = false;
+  bool ready = false;
+  std::exception_ptr exception;
 };
 
 template <typename T> struct TaskPromise<T &> : TaskPromiseBase {
@@ -109,24 +111,27 @@ template <typename T> struct TaskPromise<T &> : TaskPromiseBase {
   void return_value(T &value) {
     std::cout << "return_value" << std::endl;
     result = &value;
+    ready = true;
   }
-  void unhandled_exception() { hadException = true; }
+  void unhandled_exception() {
+    exception = std::current_exception();
+    ready = true;
+  }
 
   T &getResult() {
-    if (result) {
-      return **result;
+    assert(ready && "getResult() called on a TaskPromise that's not ready.");
+
+    if (exception) {
+      std::rethrow_exception(exception);
     }
 
-    if (hadException) {
-      throw std::runtime_error("Task had exception.");
-    }
-
-    assert(false && "getResult() called on a TaskPromise that's not ready.");
+    return *result;
   }
 
 private:
-  std::optional<T *> result;
-  bool hadException = false;
+  bool ready = false;
+  T *result;
+  std::exception_ptr exception;
 };
 } // namespace detail
 

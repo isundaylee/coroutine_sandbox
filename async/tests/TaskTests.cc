@@ -59,6 +59,40 @@ TEST(TaskTests, NestedWithSuspension) {
 TEST(TaskExitTests, GetResultWhenNotReady) {
   Task<int> task = calling_sleep_1ms();
   ASSERT_EXIT(task.getResult(), testing::KilledBySignal(SIGABRT),
-              "Assertion failed: \\(false && \"getResult\\(\\) called on a "
+              "Assertion failed: \\(ready && \"getResult\\(\\) called on a "
               "TaskPromise that's not ready\\.\"\\), function getResult.+");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Exception handling tests
+
+Task<int> throwing_int() {
+  throw TestException{};
+  co_return 42;
+}
+
+Task<int &> throwing_ref() {
+  throw TestException{};
+  int *a = new int{42};
+  co_return *a;
+}
+
+Task<void> throwing_void() {
+  throw TestException{};
+  co_return;
+}
+
+TEST(TaskExitTests, ExceptionBasic) {
+  Task<int> noop = throwing_int();
+  ASSERT_THROW(runSingleTask(noop), TestException);
+}
+
+TEST(TaskExitTests, ExceptionVoid) {
+  Task<void> noop = throwing_void();
+  ASSERT_THROW(runSingleTask(noop), TestException);
+}
+
+TEST(TaskExitTests, ExceptionRef) {
+  Task<int &> noop = throwing_ref();
+  ASSERT_THROW(runSingleTask(noop), TestException);
 }

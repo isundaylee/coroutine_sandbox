@@ -45,7 +45,7 @@ template <typename T> struct TaskPromise : TaskPromiseBase {
 
   Task<T> get_return_object() { return {CoroutineHandle::from_promise(*this)}; }
 
-  void return_value(int _result) {
+  void return_value(T _result) {
     result = _result;
     ready = true;
   }
